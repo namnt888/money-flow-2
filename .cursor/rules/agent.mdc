@@ -1,0 +1,56 @@
+---
+description: Agent rules for money-flow-2 repo (Cursor / Claude / Copilot CLI)
+alwaysApply: true
+---
+
+# money-flow-2 Agent Rules
+
+## Repo purpose
+Personal finance tracker. Backend: Supabase (Postgres + Edge Functions). 
+No frontend framework yet — backend-first sprint.
+
+## Tech stack
+- **Database**: Supabase Postgres (see `supabase/migrations/` for full schema)
+- **Edge Functions**: Deno / TypeScript in `supabase/functions/`
+- **Migrations**: timestamped SQL files in `supabase/migrations/`
+- **Docs**: `docs/` — per-sprint markdown
+- **Legacy sync**: GAS script in `docs/legacy-gas/Code.js` (reference only)
+
+## Key business rules
+
+### Transactions
+- Only `status = 'posted'` affects balances and cashback calculations
+- Never hard-delete; set `status = 'void'` instead
+- `type` values: expense | income | transfer_out | transfer_in | debt | repayment | service | installment | refund
+
+### Sheet sync (Sprint 2)
+- Sheet ID per person is stored in `people.sheet_id` (NOT env vars)
+- `people.sheet_enabled = false` means skip sync for that person
+- Sheet layout v6.9: A=ID, B=Type, C=Date, D=Shop, E=Notes, F=Amount, G=%Back, H=đBack, I=ΣBack, J=Final, K=ShopSource
+- I (ΣBack) and J (Final) are computed server-side in `sync-sheet` Edge Function
+- Shop icon lookup: `shop_map` table (keyword → icon_url), replaces GAS Shop tab VLOOKUP
+
+### Cashback
+- Cycle types: `calendar` (YYYY-MM) | `statement` (billing-day-anchored)
+- `cb_max_budget` is a cap, not a sum target
+- Cashback clawback required when refund hits a posted cashback cycle
+
+### People / Sheet management
+- `people.sheet_id` = Google Spreadsheet ID
+- `people.sheet_cycle_mode` = `month` (one tab/YYYY-MM) | `year` (one tab/YYYY)
+- Admin UI should allow editing sheet_id without touching env vars
+
+## Migration naming convention
+`YYYYMMDDHHMMSS_description_snake_case.sql`
+
+## Edge function conventions
+- Each function in its own folder: `supabase/functions/<name>/index.ts`
+- Include `deno.json` for imports
+- Use `SUPABASE_SERVICE_ROLE_KEY` for DB access inside functions
+- Google API access via service account JSON stored in Supabase secret `GOOGLE_SERVICE_ACCOUNT_JSON`
+
+## What NOT to do
+- Do NOT hardcode sheet IDs or person IDs in env vars or code
+- Do NOT use GAS PropertiesService pattern (replaced by people.sheet_id)
+- Do NOT write ARRAYFORMULA to sheets (compute I, J, D server-side)
+- Do NOT add frontend code until backend sprint is complete

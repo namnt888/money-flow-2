@@ -1,0 +1,33 @@
+---
+description: Database schema quick reference for money-flow-2
+alwaysApply: false
+---
+
+# Schema Quick Reference
+
+## Core tables (Sprint 1)
+
+| Table | Key columns | Notes |
+|---|---|---|
+| `people` | id, name, sheet_id, sheet_enabled, sheet_cycle_mode | sheet_* added Sprint 2 |
+| `accounts` | id, account_type, credit_limit, current_balance, parent_account_id | |
+| `transactions` | id, occurred_at, type, status, amount, source_account_id, category_id, person_id | status: posted/pending/void |
+| `categories` | id, code, name_vi, parent_code, level, group, affects_cashback | |
+| `cashback_policies` | id, account_id, cb_rate, cb_min_spend, cb_max_budget, cycle_type | |
+| `cashback_cycles` | id, policy_id, cycle_tag, earned, status | |
+| `budgets` | id, category_id, owner_id, amount, cycle_type, is_rollover, status | |
+| `recurring_services` | id, name, account_id, amount, billing_cycle, next_due_date | |
+| `installment_plans` | id, plan_name, principal_amount, total_installments, installments_paid | |
+| `debts` | id, original_amount, repaid_amount, debt_role, person_id | |
+| `refunds` | id, original_transaction_id, refund_amount, cashback_clawback_amount | |
+| `shop_map` | id, keyword, display_name, icon_url, match_mode | Sprint 2: replaces GAS Shop tab |
+| `audit_log` | id, entity_type, entity_id, action, old_value, new_value | |
+
+## Transaction types
+`expense` `income` `transfer_out` `transfer_in` `debt` `repayment` `service` `installment` `refund`
+
+## Account types
+`credit` `debit` `savings` `e_wallet` `cash`
+
+## Cashback cycle_tag format
+`YYYY-MM` (calendar) or statement-anchored `YYYY-MM` with billing_day offset
