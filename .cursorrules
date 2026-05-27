@@ -1,0 +1,46 @@
+# Money Flow 2 — Agent Context Rules
+# Read this before writing any code
+
+## Project Overview
+Personal finance app: expense tracking, cashback management, debt tracking.
+Single user. Stack: Next.js 15 + Supabase (PostgreSQL) + Google Sheets sync.
+
+## Database
+- Source: `/supabase/migrations/*.sql` — this is the ONLY source of truth for schema
+- Run `supabase db push` to apply migrations after changes
+- NEVER hardcode balance or cashback calculations in application code — use DB triggers/views
+- Balance is computed by trigger `txn_balance_sync` in migration 002
+- Cashback is computed via view `v_cashback_cycle_summary` in migration 003
+- Debt repaid_amount is synced by trigger `txn_debt_sync` in migration 004
+
+## Transaction Rules
+- `amount` is ALWAYS positive bigint in VND
+- Direction determined by `type` field — never use negative numbers
+- `status=void` = soft delete (never hard delete transactions)
+- `persisted_cycle_tag` locks the cashback cycle (YYYY-MM format)
+- Transfer = 2 rows: `transfer_out` + `transfer_in` (atomic)
+
+## Parser API
+- Raw text → JSON → `public.bulk_insert_parsed_txns(jsonb)` RPC
+- LLM must output JSON matching schema in migration 007
+- Two input formats are supported (see /docs/parser-formats.md)
+
+## Sheets Sync
+- Debt sheet sync is highest priority
+- GAS script POSTs to `/api/sheets/sync` endpoint
+- Endpoint reads from Supabase and returns formatted rows
+
+## Code Style
+- TypeScript strict mode
+- Supabase client: `@supabase/supabase-js` v2
+- API routes: Next.js App Router `/app/api/`
+- No ORM — use Supabase client or raw SQL via RPC functions
+- Avoid `any` types — generate types from `supabase gen types typescript`
+
+## File Structure
+```
+/app/api/         - Next.js API routes
+/supabase/        - migrations + config
+/lib/supabase/    - client init + typed helpers
+/docs/            - business logic docs
+```
